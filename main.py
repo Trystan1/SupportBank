@@ -1,66 +1,103 @@
 import csv
-from account import Account
+from bank import Bank
 
-def readFile():
-    # mostly copied from https://realpython.com/python-csv/#parsing-csv-files-with-pythons-built-in-csv-library
-    with open('Transactions2014.csv') as f:
-        csv_reader = csv.reader(f, delimiter=',')
-        line_count = 0
-        for row in csv_reader:
-            if line_count == 0:
-                print(f'Column names are {",".join(row)}')
-                line_count += 1
+def generateUsers(transactions):
+    # Search the first two columns of the csv and add unique names to the user list
+    userlist = []
+    for i in range(0, len(transactions)):
 
-            else:
-                print(f'\t on {row[0]} ,{row[1]} gave {row[2]} {row[3]} for the amount of £{row[4]}')
-                line_count += 1
-        print(f'Processed {line_count} lines.')
-        f.close()
+        if transactions[i]["From"] in userlist:
+            pass
+        else:
+            userlist.append(transactions[i]["From"])
 
-def readFiletoDict():
-    # mostly copied from https://realpython.com/python-csv/#parsing-csv-files-with-pythons-built-in-csv-library
-    with open('Transactions2014.csv') as csv_file:
-        csv_reader = csv.DictReader(csv_file)
-        line_count = 0
-        for row in csv_reader:
-            if line_count == 0:
-                print(f'Column names are {",".join(row)}')
-                line_count += 1
+        if transactions[i]["To"] in userlist:
+            pass
+        else:
+            userlist.append(transactions[i]["To"])
+    return userlist
 
-            print(f'\t on {row["Date"]} ,{row["From"]} gave {row["To"]} {row["Narrative"]} for the amount of £{row["Amount"]}')
-            line_count += 1
-        print(f'Processed {line_count} lines.')
-        csv_file.close()
+def generateTransactions(csv_reader):
+    transactions = {}
+    i = 0
+    for row in csv_reader:
+        transactions[i] = row
+        transactions[i]["Amount"] = int(float(row["Amount"])*100)
+        i += 1
+
+    return transactions
+
+def doTransactions(transactions,supportBank):
+    for i in range(0, len(transactions)):
+        # access the account of the person with outgoing money
+        accountFrom = supportBank.getAccount(str(transactions[i]["From"]))
+        # decrement the account balance of the person with outgoing money
+        accountFrom.balanceChange(-transactions[i]["Amount"])
+        # retrieve the new balance for the person with outgoing money
+        newBalance = accountFrom.balanceStatement()
+        # generate a statement for the transaction
+        fromStatement = (f'On {transactions[i]["Date"]}, £{transactions[i]["Amount"]/100} was taken from '
+                                f'{transactions[i]["From"]} by {transactions[i]["To"]} for the purpose of '
+                                f'{transactions[i]["Narrative"]}, New Balance: {newBalance}')
+        # store transaction statement in user's account
+        accountFrom.transactionRecord(fromStatement)
+
+        # access the account of the person with incoming money
+        accountTo = supportBank.getAccount(str(transactions[i]["To"]))
+        # increment the account balance of the person with incoming money
+        accountTo.balanceChange(transactions[i]["Amount"])
+        # retrieve the new balance for the person with incoming money
+        newBalance = accountTo.balanceStatement()
+        # generate a statement for the transaction
+        toStatement = (f'On  {transactions[i]["Date"]}, £{transactions[i]["Amount"]/100} was given to '
+                                f'{transactions[i]["To"]} by {transactions[i]["From"]} for the purpose of '
+                                f'{transactions[i]["Narrative"]}, New Balance: {newBalance}')
+        # store transaction statement in user's account
+        accountTo.transactionRecord(toStatement)
 
 def main():
-    # mostly copied from https://realpython.com/python-csv/#parsing-csv-files-with-pythons-built-in-csv-library
+
+    # initialise instance of class Bank
+    supportBank = Bank()
+
     with open('Transactions2014.csv') as csv_file:
+        # create dictionary from csv file
         csv_reader = csv.DictReader(csv_file)
-        line_count = 0
-        for row in csv_reader:
-            # if line_count == 0:
-            #     print(f'Column names are {",".join(row)}')
-            #     line_count += 1
-
-            # this works, now just need to prevent duplication of accounts
-            account = Account(row["From"])
-            print(f'{account.name}')
-            # print(f'\t on {row["Date"]} ,{row["From"]} gave {row["To"]} {row["Narrative"]} for the amount of £{row["Amount"]}')
-            # line_count += 1
-
-            # print(Account.name)
-            # processing of account statements here
-        # print(Account.name)
+        # read all transactions into a dictionary for ease of access (csv_reader is weird)
+        transactions = generateTransactions(csv_reader)
+        # print(transactions)
+        # generate list of strings of names
+        userlist = generateUsers(transactions)
+        # print(userlist)
         csv_file.close()
 
-main()
+    # create dictionary in class bank, containing an account for each member of the userlist
+    for i in range(0, len(userlist)):
+        supportBank.putAccount(userlist[i])
 
+    # calculate and record all transactions in each User's account
+    doTransactions(transactions, supportBank)
 
-# from bank import Bank
-#
-# def main():
-#   supportBank = Bank()
-#   supportBank.putAccount('Bob')
-#
-# if __name__ == "__main__":
-#   main()
+    # here we have the user interface loop
+    run = True
+    while run == True:
+        User_input = input('Welcome to the Bank \nList All for a list of all users and their current balances \n'
+                           'List \'User\' for all of the transactions of a given user \nPlease make your entry: ')
+
+        if User_input == 'Quit':
+            run = False
+        elif User_input == 'List All':
+            for i in range(0, len(userlist)):
+                currentBalance = supportBank.getAccount(userlist[i]).balanceStatement()
+                print(f'{userlist[i]}, Balance: {currentBalance}')
+
+        elif User_input[5:8] != 'All':
+            New_input = User_input.replace('List ', '')
+            print(f'{New_input}')
+            statement = supportBank.getAccount(New_input).transactionStatement()
+            print(*statement, sep="\n")
+            print(f'{len(statement)}')
+
+if __name__ == "__main__":
+  main()
+

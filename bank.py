@@ -9,5 +9,5 @@ class Bank:
     self.accounts[name] = Account(name)
 
   def getAccount(self, name) -> Account:
+    # return the Account subclass relating to the account name
     return self.accounts[name]
-    # print(self.accounts)

@@ -3,6 +3,7 @@ import logging
 logging.basicConfig(filename='SupportBank.log', filemode='w', level=logging.DEBUG)
 import datetime
 import json
+import xml.etree.ElementTree as ET
 from bank import Bank
 
 def readCsv(filename):
@@ -39,7 +40,30 @@ def readJson(filename):
 
         return transactions
 
+def readXml(filename):
+    # filename = 'Transactions2012.xml'
+    tree = ET.parse(filename)
+    root = tree.getroot()
 
+    i = 0
+    transactions = {}
+    for child in root:
+
+        # convert date into dd/mm/yyyy from xml's days since 1900
+        date_str = child.attrib["Date"]
+        new_date = datetime.datetime(1900, 1, 1, 0, 0) + datetime.timedelta(int(date_str) - 1)
+        new_date = new_date.strftime("%d/%m/%Y")
+
+        # define dictionary key headers on each iteration
+        transactions[i] = {"Date": None, "From": None, "To": None, "Narrative": None, "Amount": None}
+        transactions[i]["Date"] = new_date
+        transactions[i]["From"] = child[2][0].text
+        transactions[i]["To"] = child[2][1].text
+        transactions[i]["Narrative"] = child[0].text
+        transactions[i]["Amount"] = int(float(child[1].text)*100)
+        i += 1
+
+    return transactions
 
 def generateTransactions(csv_reader):
     transactions = {}
@@ -168,13 +192,6 @@ def main():
             statement = supportBank.getAccount(New_input).transactionStatement()
             print(*statement, sep="\n")
 
-
-def readXml():
-    filename = 'Transactions2012.xml'
-
-
-
 if __name__ == "__main__":
-  # main()
-    readXml()
+  main()
 

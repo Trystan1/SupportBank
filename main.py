@@ -39,6 +39,8 @@ def readJson(filename):
 
         return transactions
 
+
+
 def generateTransactions(csv_reader):
     transactions = {}
     i = 0
@@ -121,7 +123,7 @@ def main():
     logging.info(f'Program start at {now.strftime("%Y-%m-%d %H:%M:%S")}')
 
     file_input = input('Which file do you want to import? \n1. Transactions2014.csv \n2. DodgyTransactions2015.csv'
-                       '\n3. Transactions2013.json \nMake entry here:')
+                       '\n3. Transactions2013.json \n4. Transactions2012.xml\nMake entry here:')
     if file_input == '1':
         filename = 'Transactions2014.csv'
         transactions = readCsv(filename)
@@ -131,6 +133,9 @@ def main():
     elif file_input == '3':
         filename = 'Transactions2013.json'
         transactions = readJson(filename)
+    elif file_input == '4':
+        filename = 'Transactions2012.xml'
+        transactions = readXml(filename)
 
     # generate list of strings of names
     userlist = generateUsers(transactions)
@@ -164,5 +169,12 @@ def main():
             print(*statement, sep="\n")
 
 
+def readXml():
+    filename = 'Transactions2012.xml'
+
+
+
 if __name__ == "__main__":
-  main()
+  # main()
+    readXml()
+

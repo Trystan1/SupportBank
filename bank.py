@@ -11,3 +11,6 @@ class Bank:
   def getAccount(self, name) -> Account:
     # return the Account subclass relating to the account name
     return self.accounts[name]
+
+  # def __str__(self):
+  #   return f'{}' # this is how you return strings

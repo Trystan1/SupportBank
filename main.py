@@ -18,6 +18,7 @@ def readCsv(filename):
         modifier = 0
         for row in csv_reader:
             found_error = False
+
             # exception to handle bad data in amount column
             try:
                 row["Amount"] = int(float(row["Amount"]) * 100)
@@ -26,7 +27,6 @@ def readCsv(filename):
                     f'A number was not entered in the "Amount" field on line {i + 2}, this line has been removed '
                     f'from the input dataset')
                 found_error = True
-
             # exception to handle errors in the date column
             try:
                 datetime.datetime.strptime(row["Date"], '%d/%m/%Y')
@@ -131,7 +131,7 @@ def readXml(filename):
     return transactions
 
 
-def generateUsers(transactions):
+def generateUsers(transactions, supportBank):
     # Search the first two columns of the csv and add unique names to the user list
     userlist = []
     for i in range(0, len(transactions)):
@@ -146,8 +146,13 @@ def generateUsers(transactions):
         else:
             userlist.append(transactions[i]["To"])
 
-        # rearrange userlist into alphabetical order
-        userlist = sorted(userlist)
+    # rearrange userlist into alphabetical order
+    userlist = sorted(userlist)
+
+    # create dictionary in class bank, containing an account for each member of the userlist
+    for i in range(0, len(userlist)):
+        supportBank.putAccount(userlist[i])
+
     return userlist
 
 
@@ -162,7 +167,7 @@ def doTransactions(transactions, supportBank):
         # generate a statement for the transaction
         fromStatement = (f'On {transactions[i]["Date"]}, £{transactions[i]["Amount"]/100} was taken from '
                          f'{transactions[i]["From"]} by {transactions[i]["To"]} for the purpose of '
-                         f'{transactions[i]["Narrative"]}, New Balance: {newBalance}')
+                         f'{transactions[i]["Narrative"]}, New Balance: £{newBalance}')
         # store transaction statement in user's account
         accountFrom.transactionRecord(fromStatement)
 
@@ -173,9 +178,9 @@ def doTransactions(transactions, supportBank):
         # retrieve the new balance for the person with incoming money
         newBalance = accountTo.balanceStatement()
         # generate a statement for the transaction
-        toStatement = (f'On  {transactions[i]["Date"]}, £{transactions[i]["Amount"]/100} was given to '
+        toStatement = (f'On {transactions[i]["Date"]}, £{transactions[i]["Amount"]/100} was given to '
                        f'{transactions[i]["To"]} by {transactions[i]["From"]} for the purpose of '
-                       f'{transactions[i]["Narrative"]}, New Balance: {newBalance}')
+                       f'{transactions[i]["Narrative"]}, New Balance: £{newBalance}')
         # store transaction statement in user's account
         accountTo.transactionRecord(toStatement)
 
@@ -183,8 +188,10 @@ def doTransactions(transactions, supportBank):
 def file_UI():
     run_UI = True
     transactions = {}
-    file_input = input('Which file do you want to import? \n1. Transactions2014.csv \n2. DodgyTransactions2015.csv'
-                       '\n3. Transactions2013.json \n4. Transactions2012.xml\nMake entry here:')
+    filename = ''
+    file_input = input('\nWelcome to the Bank \nWhich file do you want to import? \n1. Transactions2014.csv \n2. '
+                       'DodgyTransactions2015.csv\n3. Transactions2013.json \n4. Transactions2012.xml'
+                       '\nMake entry here:')
     if file_input == '1':
         filename = 'Transactions2014.csv'
         logging.info(f'User opened file: {filename}')
@@ -204,17 +211,18 @@ def file_UI():
     elif file_input == 'Quit':
         run_UI = False
     else:
+        print('Invalid data file selected')
         logging.error("Invalid data file selected")
 
-    return transactions, run_UI
+    return transactions, run_UI, filename
 
 
-def output_UI(userlist, transactions, supportBank):
-    # here we have the user interface loop
+def output_UI(userlist, transactions, supportBank, filename):
     run = True
     while run is True and transactions != {}:
-        User_input = input('Welcome to the Bank \nList All for a list of all users and their current balances \n'
-                           'List \'User\' for all of the transactions of a given user \nPlease make your entry: ')
+        User_input = input(f'\nYou have loaded file {filename} \nList All for a list of all users and their current '
+                           f'balances \nList \'User\' for all of the transactions of a given user \nPlease make your '
+                           f'entry: ')
 
         if User_input == 'Quit':
             logging.info(f'User exited the output_UI')
@@ -223,7 +231,7 @@ def output_UI(userlist, transactions, supportBank):
             logging.info(f'User requested "List All"')
             for i in range(0, len(userlist)):
                 currentBalance = supportBank.getAccount(userlist[i]).balanceStatement()
-                print(f'{userlist[i]}, Balance: {currentBalance}')
+                print(f'{userlist[i]}, Balance: £{currentBalance}')
         elif User_input[5:8] != 'All':
             try:
                 New_input = User_input.replace('List ', '')
@@ -231,38 +239,28 @@ def output_UI(userlist, transactions, supportBank):
                 statement = supportBank.getAccount(New_input).transactionStatement()
                 print(*statement, sep="\n")
             except KeyError:
+                print('Invalid command entered')
                 logging.error(f'invalid command entered')
                 run = False
 
 
 def main():
-
     now = datetime.datetime.now()
     logging.info(f'Program start at {now.strftime("%Y-%m-%d %H:%M:%S")}')
 
     run_UI = True
-
     while run_UI is True:
         # initialise instance of class Bank
         supportBank = Bank()
-
         # prompt user for filename
-        transactions, run_UI = file_UI()
-
-        if run_UI is False:
-            break
-
+        transactions, run_UI, filename = file_UI()
+        if run_UI is False: break
         # generate list of strings of names (alphabetically sorted) and create an account for each of them
-        userlist = generateUsers(transactions)
-
-        # create dictionary in class bank, containing an account for each member of the userlist
-        for i in range(0, len(userlist)):
-            supportBank.putAccount(userlist[i])
-
+        userlist = generateUsers(transactions, supportBank)
         # calculate and record all transactions in each User's account
         doTransactions(transactions, supportBank)
-
-        output_UI(userlist, transactions, supportBank)
+        # prompt user for account display options
+        output_UI(userlist, transactions, supportBank, filename)
 
     now = datetime.datetime.now()
     logging.info(f'User quit the program at {now.strftime("%Y-%m-%d %H:%M:%S")}')
